@@ -61,18 +61,6 @@ app.get('/version', (req, res) => {
     res.json({ version: '1.0.0' });
 });
 
-
-// mock events endpoint. this would be replaced by a call to a datastore
-// if you went on to develop this as a real application.
-app.get('/events', (req, res) => {
-    getEvents(req, res);
-});
-
-
-// Adds an event - in a real solution, this would insert into a cloud datastore.
-// Currently this simply adds an event to the mock array in memory
-// this will produce unexpected behavior in a stateless kubernetes cluster. 
-app.post('/event', (req, res) => {
     // create a new object from the json data and add an id
     const ev = { 
         title: req.body.title, 
@@ -83,7 +71,6 @@ app.post('/event', (req, res) => {
         getEvents(req, res);
     });
 
-});
 
 
 app.use((err, req, res, next) => {
