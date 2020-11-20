@@ -8,9 +8,6 @@ const express = require('express');
 // https://www.npmjs.com/package/body-parser
 const bodyParser = require('body-parser');
 
-const Firestore = require('@google-cloud/firestore');
-const firestore = new Firestore({ projectId: process.env.GOOGLE_CLOUD_PROJECT});
-
 // create the server
 const app = express();
 
@@ -19,34 +16,36 @@ app.use(bodyParser.json());
 
 // mock events data - for a real solution this data should be coming 
 // from a cloud data store
-const mockEvents = {
-    events: [
-        { title: 'an event', id: 1, description: 'something really cool' },
-        { title: 'another event', id: 2, description: 'something even cooler' }
-    ]
-};
-
 function getEvents(req, res) {
-    firestore.collection('cnd-events').get()
-        .then((snapshot) => {
-            if (!snapshot.empty) {
-                const ret  = { events: []};
-                snapshot.docs.forEach(element => {
-                    let ev = element.data();
-                    ev.id = element.id;
-                    ret.events.push(ev);
-                }, this);
-                console.log('Events Array: ', ret);
-                res.json(ret);
-            } else {
-                res.json(mockEvents);
-            }
+    const returnObj = { events: []};
+        firestore.collection("Events").get()
+            .then((snapshot) => {
+                    if (!snapshot.empty) {
+                        snapshot.docs.forEach(doc => {
+                        const eventObj = doc.data();
+                        //get internal firestore id and assign to object
+                        eventObj.id = doc.id;
+                        //add object to array
+                        console.log(returnObj);
+                        returnObj.events.push(eventObj);
+                        }); 
+                }
+            res.json(returnObj);
         })
         .catch((err) => {
-            console.error('Error getting events: ', err.message);
-            res.json(mockEvents);
+            console.error('Error getting events', err);
+            res.json(returnObj);
         });
-}
+};
+// bring in firestore
+const Firestore = require("@google-cloud/firestore");
+
+// initialize Firestore and set project id from env var
+const firestore = new Firestore(
+    {
+        projectId: process.env.GOOGLE_CLOUD_PROJECT
+    }
+);
 
 
 // health endpoint - returns an empty array
@@ -63,9 +62,9 @@ app.get('/version', (req, res) => {
 // mock events endpoint. this would be replaced by a call to a datastore
 // if you went on to develop this as a real application.
 app.get('/events', (req, res) => {
-    // res.json(mockEvents);
     getEvents(req, res);
 });
+
 
 // Adds an event - in a real solution, this would insert into a cloud datastore.
 // Currently this simply adds an event to the mock array in memory
@@ -75,16 +74,14 @@ app.post('/event', (req, res) => {
     const ev = { 
         title: req.body.title, 
         description: req.body.description,
-        id : mockEvents.events.length + 1
      }
-    // add to the mock array
-    // mockEvents.events.push(ev);
-    // return the complete array
-    // res.json(mockEvents);
-    firestore.collection("cnd-events").add(ev).then(ret => {
-        getEvents(req,res);
+// this will create the Events collection if it does not exist
+    firestore.collection("Events").add(ev).then(ret => {
+        getEvents(req, res);
     });
+
 });
+
 
 app.use((err, req, res, next) => {
     console.error(err.stack);
@@ -95,7 +92,7 @@ const PORT = 8082;
 const server = app.listen(PORT, () => {
     const host = server.address().address;
     const port = server.address().port;
-    console.log('Backend (Internal) running');
+
     console.log(`Events app listening at http://${host}:${port}`);
 });
 
